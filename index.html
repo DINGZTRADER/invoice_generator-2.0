@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Yellow Haven Lodge Invoice Generator</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body {
+      background: #232323;
+      color: #FFE066;
+      font-family: 'Segoe UI', Arial, sans-serif;
+      min-height: 100vh;
+    }
+    .card {
+      background: #333333;
+      border: none;
+      border-radius: 18px;
+      box-shadow: 0 4px 20px #0005;
+    }
+    .form-label, .form-control, .form-select, .form-check-label {
+      color: #FFE066 !important;
+      background: #292929 !important;
+      border: none !important;
+    }
+    .form-control:focus, .form-select:focus {
+      box-shadow: 0 0 0 2px #FFE06655;
+      color: #FFE066;
+      background: #292929;
+    }
+    .btn-yellow {
+      background: #FFE066;
+      color: #191919;
+      font-weight: bold;
+      border-radius: 8px;
+      padding: 10px 30px;
+      box-shadow: 0 2px 12px #FFD30033;
+      transition: 0.1s;
+      border: none;
+    }
+    .btn-yellow:hover {
+      background: #FFD300;
+    }
+    .logo-top {
+      display: block;
+      margin: 30px auto 8px auto;
+      max-width: 210px;
+      filter: drop-shadow(0 0 6px #FFD300cc);
+      background: transparent;
+    }
+    .grand-total {
+      font-size: 2rem;
+      color: #FFD300;
+      font-weight: 900;
+      text-align: right;
+    }
+    .extra-note {
+      font-size: 1.3rem;
+      font-weight: 900;
+      color: #FFD300;
+      margin-top: 12px;
+    }
+    .invoice-summary {
+      background: #292929;
+      color: #FFE066;
+      border-radius: 10px;
+      padding: 16px;
+      margin-bottom: 10px;
+      min-height: 110px;
+    }
+  </style>
+</head>
+<body>
+  <img src="logo2.png" alt="Yellow Haven Lodge" class="logo-top"/>
+  <h2 class="text-center" style="font-weight:900; color:#FFE066; letter-spacing:2px;">INVOICE</h2>
+  <div class="container d-flex flex-column align-items-center">
+    <div class="card p-4 mt-1" style="max-width:700px; width:100%">
+      <form id="invoiceForm">
+        <div class="row mb-2">
+          <div class="col-md-6 mb-2">
+            <label class="form-label">Guest Name</label>
+            <input type="text" class="form-control" id="guestName" required />
+          </div>
+          <div class="col-md-6 mb-2">
+            <label class="form-label">Payment by</label>
+            <select class="form-select" id="paymentBy" required>
+              <option>Cash</option>
+              <option>Card</option>
+              <option>Mobile Money</option>
+              <option>Bank Transfer</option>
+            </select>
+          </div>
+        </div>
+        <div class="row mb-2">
+          <div class="col-md-6 mb-2">
+            <label class="form-label">Check-in Date <span style="font-size:0.9em;color:#FFD300;">(e.g. 18 June 2025)</span></label>
+            <input type="text" class="form-control" id="checkIn" placeholder="e.g. 18 June 2025" required />
+          </div>
+          <div class="col-md-6 mb-2">
+            <label class="form-label">Check-out Date <span style="font-size:0.9em;color:#FFD300;">(e.g. 21 June 2025)</span></label>
+            <input type="text" class="form-control" id="checkOut" placeholder="e.g. 21 June 2025" required />
+          </div>
+        </div>
+        <hr style="border-color:#FFD300;">
+        <div id="roomsSection"></div>
+        <button type="button" class="btn btn-yellow my-2" onclick="addRoomRow()">Add Room</button>
+        <div class="row mb-2">
+          <div class="col-md-6 mb-2">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" id="breakfastCheck">
+              <label class="form-check-label" for="breakfastCheck">Breakfast ($10/person/day)</label>
+            </div>
+            <div class="d-flex align-items-center mt-1" id="breakfastFields" style="display:none;">
+              <span class="form-label mb-0">Guests:</span>
+              <input type="number" class="form-control mx-2" style="width:70px;" id="breakfastGuests" min="1"/>
+              <span class="form-label mb-0">Days:</span>
+              <input type="number" class="form-control mx-2" style="width:70px;" id="breakfastDays" min="1"/>
+            </div>
+          </div>
+          <div class="col-md-6 mb-2">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" id="conferenceCheck">
+              <label class="form-check-label" for="conferenceCheck">Conference Room ($120/day)</label>
+            </div>
+            <div class="d-flex align-items-center mt-1" id="conferenceFields" style="display:none;">
+              <span class="form-label mb-0">Days:</span>
+              <input type="number" class="form-control mx-2" style="width:70px;" id="conferenceDays" min="1"/>
+            </div>
+          </div>
+        </div>
+        <div class="extra-note">* Each extra guest after the first: $22</div>
+        <button type="submit" class="btn btn-yellow w-100 mt-3" style="font-size:1.3em;">Generate Invoice</button>
+      </form>
+      <div class="invoice-summary mt-4" id="summaryDiv" style="display:none"></div>
+      <div class="grand-total" id="grandTotalDiv" style="display:none"></div>
+    </div>
+  </div>
+  <script>
+    const ROOM_RATES = {
+      "Crested Crane ($98)":     { rate: 98, max: 4 },
+      "Wild Geese ($135)":       { rate: 135, max: 3 },
+      "Kingfisher ($110)":       { rate: 110, max: 5 },
+      "Ross Turaco ($110)":      { rate: 110, max: 3 },
+      "Tower ($55)":             { rate: 55,  max: 2 },
+      "Wax Bill ($95)":          { rate: 95,  max: 4 },
+      "Starling ($85)":          { rate: 85,  max: 2 },
+      "Ibis ($75)":              { rate: 75,  max: 3 },
+      "Caven ($100)":            { rate: 100, max: 2 },
+      "Tree House The Crown ($100)": { rate: 100, max: 2 },
+      "Sunbird ($98)":           { rate: 98,  max: 3 }
+    };
+    const EXTRA_GUEST_RATE = 22;
+    const BREAKFAST_RATE = 10;
+    const CONFERENCE_ROOM_RATE = 120;
+
+    function roomOptionsHTML() {
+      return Object.keys(ROOM_RATES).map(room =>
+        `<option value="${room}">${room}</option>`
+      ).join('');
+    }
+    function addRoomRow() {
+      const idx = document.querySelectorAll('.room-row').length;
+      const html = `
+        <div class="row mb-2 room-row" data-idx="${idx}">
+          <div class="col-md-8 mb-2">
+            <label class="form-label">Room Type</label>
+            <select class="form-select room-type" required onchange="updatePaxOptions(this, ${idx})">
+              <option value="">Select Room...</option>
+              ${roomOptionsHTML()}
+            </select>
+          </div>
+          <div class="col-md-4 mb-2">
+            <label class="form-label">Guests</label>
+            <input type="number" class="form-control room-pax" min="1" max="5" value="1" required onchange="validatePax(this, ${idx})"/>
+          </div>
+        </div>
+      `;
+      document.getElementById('roomsSection').insertAdjacentHTML('beforeend', html);
+    }
+    function updatePaxOptions(sel, idx) {
+      const room = sel.value;
+      const max = room && ROOM_RATES[room] ? ROOM_RATES[room].max : 1;
+      const parent = sel.closest('.room-row');
+      const paxInput = parent.querySelector('.room-pax');
+      paxInput.value = 1;
+      paxInput.max = max;
+    }
+    function validatePax(input, idx) {
+      const row = input.closest('.room-row');
+      const sel = row.querySelector('.room-type');
+      const room = sel.value;
+      if (room && ROOM_RATES[room]) {
+        const max = ROOM_RATES[room].max;
+        if (parseInt(input.value) > max) input.value = max;
+        if (parseInt(input.value) < 1) input.value = 1;
+      }
+    }
+    // Initial Room Row
+    window.onload = function() {
+      addRoomRow();
+      document.getElementById('breakfastCheck').onchange = function() {
+        document.getElementById('breakfastFields').style.display = this.checked ? 'flex' : 'none';
+      };
+      document.getElementById('conferenceCheck').onchange = function() {
+        document.getElementById('conferenceFields').style.display = this.checked ? 'flex' : 'none';
+      };
+    };
+
+    // Summary and Calculation
+    document.getElementById('invoiceForm').onsubmit = function(e) {
+      e.preventDefault();
+      // Gather fields
+      const guestName = document.getElementById('guestName').value.trim();
+      const paymentBy = document.getElementById('paymentBy').value;
+      const checkIn = document.getElementById('checkIn').value.trim();
+      const checkOut = document.getElementById('checkOut').value.trim();
+      const rooms = Array.from(document.querySelectorAll('.room-row')).map(row => {
+        return {
+          room: row.querySelector('.room-type').value,
+          pax: parseInt(row.querySelector('.room-pax').value)
+        };
+      }).filter(r => r.room);
+      if (!guestName || !checkIn || !checkOut || !rooms.length) {
+        alert("Please fill all required fields and add at least one room.");
+        return;
+      }
+      // Parse nights
+      let nights = 1;
+      try {
+        const ci = new Date(checkIn);
+        const co = new Date(checkOut);
+        nights = Math.max(1, Math.round((co - ci) / (1000 * 60 * 60 * 24)));
+      } catch {
+        nights = 1;
+      }
+      // Calculate
+      let summary = `<b>Guest:</b> ${guestName}<br><b>Payment by:</b> ${paymentBy}<br><b>Dates:</b> ${checkIn} – ${checkOut}<br><br>`;
+      summary += `<table class="table table-dark table-bordered" style="color:#FFD300;"><tr><th>Room</th><th>Guests</th><th>Rate/Night</th><th>Nights</th><th>Total</th></tr>`;
+      let roomTotal = 0;
+      rooms.forEach(r => {
+        const base = ROOM_RATES[r.room].rate;
+        const max = ROOM_RATES[r.room].max;
+        const extra = r.pax > 1 ? r.pax - 1 : 0;
+        const rate = base + (extra * EXTRA_GUEST_RATE);
+        const total = rate * nights;
+        roomTotal += total;
+        summary += `<tr>
+          <td>${r.room}</td>
+          <td>${r.pax}</td>
+          <td>$${rate}</td>
+          <td>${nights}</td>
+          <td>$${total}</td>
+        </tr>`;
+      });
+      summary += `</table>Subtotal (Rooms): <b>$${roomTotal.toFixed(2)}</b><br>`;
+      // Breakfast
+      let breakfast = 0;
+      if (document.getElementById('breakfastCheck').checked) {
+        const bguests = parseInt(document.getElementById('breakfastGuests').value) || 0;
+        const bdays = parseInt(document.getElementById('breakfastDays').value) || 0;
+        breakfast = bguests * BREAKFAST_RATE * bdays;
+        summary += `Breakfast: $${breakfast.toFixed(2)}<br>`;
+      }
+      // Conference
+      let conf = 0;
+      if (document.getElementById('conferenceCheck').checked) {
+        const cdays = parseInt(document.getElementById('conferenceDays').value) || 0;
+        conf = cdays * CONFERENCE_ROOM_RATE;
+        summary += `Conference Room: $${conf.toFixed(2)}<br>`;
+      }
+      // Totals
+      const grandTotal = roomTotal + breakfast + conf;
+      summary += `<br><div class="grand-total">Grand Total: $${grandTotal.toFixed(2)}</div>`;
+      document.getElementById('summaryDiv').innerHTML = summary;
+      document.getElementById('summaryDiv').style.display = '';
+      document.getElementById('grandTotalDiv').style.display = '';
+      // Scroll to summary
+      setTimeout(()=>document.getElementById('summaryDiv').scrollIntoView({behavior:'smooth'}),400);
+    }
+  </script>
+</body>
+</html>
